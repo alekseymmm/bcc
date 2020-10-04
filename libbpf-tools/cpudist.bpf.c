@@ -5,8 +5,9 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
 #include "cpudist.h"
+#include "bits.bpf.h"
 
-#define TASK_RUNNING 0
+#define TASK_RUNNING	0
 
 const volatile bool targ_per_process = false;
 const volatile bool targ_per_thread = false;
@@ -27,29 +28,6 @@ struct {
 	__type(key, u32);
 	__type(value, struct hist);
 } hists SEC(".maps");
-
-static __always_inline u64 log2(u32 v)
-{
-	u32 shift, r;
-
-	r = (v > 0xFFFF) << 4; v >>= r;
-	shift = (v > 0xFF) << 3; v >>= shift; r |= shift;
-	shift = (v > 0xF) << 2; v >>= shift; r |= shift;
-	shift = (v > 0x3) << 1; v >>= shift; r |= shift;
-	r |= (v >> 1);
-
-	return r;
-}
-
-static __always_inline u64 log2l(u64 v)
-{
-	u32 hi = v >> 32;
-
-	if (hi)
-		return log2(hi) + 32;
-	else
-		return log2(v);
-}
 
 static __always_inline void store_start(u32 tgid, u32 pid, u64 ts)
 {
@@ -98,7 +76,7 @@ static __always_inline void update_hist(struct task_struct *task,
 }
 
 SEC("kprobe/finish_task_switch")
-int BPF_KPROBE(kprobe__finish_task_switch, struct task_struct *prev)
+int BPF_KPROBE(finish_task_switch, struct task_struct *prev)
 {
 	u32 prev_tgid = BPF_CORE_READ(prev, tgid);
 	u32 prev_pid = BPF_CORE_READ(prev, pid);
